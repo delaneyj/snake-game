@@ -1,0 +1,49 @@
+version: "3"
+
+interval: 100ms
+
+vars:
+  NAME: "snake"
+  BIN_NAME: "{{.NAME}}_bin"
+
+tasks:
+  tools:
+    cmds:
+      - go install github.com/a-h/templ/cmd/templ@latest
+      - go install github.com/go-task/task/v3/cmd/task@latest
+
+  templ:
+    env:
+      TEMPL_EXPERIMENT: rawgo
+    generates:
+      - "**/*_templ.go"
+    sources:
+      - "**/*.templ"
+    cmds:
+      - templ generate .
+
+  kill:
+    cmds:
+      - killall -q {{.BIN_NAME}}  || echo "Process was not running."
+
+  hot:
+    desc: Server hot reload
+    env:
+      ENV: dev
+    sources:
+      - "**/*.go"
+      - "**/*.md"
+      - "static/**/*"
+    deps:
+      - kill
+      - templ
+
+    cmds:
+      - go mod tidy
+      - go build -o ./{{.BIN_NAME}} cmd/{{.NAME}}/main.go
+      - ./{{.BIN_NAME}}
+
+  default:
+    deps:
+      - hot
+    silent: true

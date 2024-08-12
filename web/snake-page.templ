@@ -1,0 +1,120 @@
+package web
+
+import (
+	"fmt"
+	"github.com/delaneyj/snake/logic"
+)
+
+templ icon(icon string, attrs templ.Attributes) {
+	<iconify-icon icon={ icon } { attrs... }></iconify-icon>
+}
+
+templ Page() {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<title>SNAKE</title>
+			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			<script type="module" defer src="https://cdn.jsdelivr.net/npm/@sudodevnull/datastar"></script>
+			<script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
+			<link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css"/>
+			<script src="https://cdn.tailwindcss.com"></script>
+		</head>
+		<body class="flex flex-col min-h-screen overflow-y-scroll min-w-screen scrollbar scrollbar-thumb-primary scrollbar-track-accent">
+			{ children... }
+		</body>
+	</html>
+}
+
+templ PageSnake(sa *logic.SnakeGame, foodSize int) {
+	@Page() {
+		<div
+			id="main"
+			class="flex flex-col gap-4 p-8"
+			data-on-load="$$get('/updates')"
+		>
+			<div class="font-bold text-xl">Snake game!</div>
+			<a href="https://gitlab.com/go-htmx/go-htmx/-/tree/main/cmd/snake-game?ref_type=heads">Port from an HTMX+Go framework</a>
+			if sa.Mode == logic.ModeNotInitialized {
+				<button
+					class="btn btn-primary btn-lg"
+					data-on-click="$$post('/reset')"
+				>
+					@icon("mdi:snake", nil)
+					Start
+				</button>
+			} else if sa.Mode == logic.ModeFinished {
+				<button
+					class="btn btn-primary btn-lg"
+					data-on-click="$$post('/reset')"
+				>
+					@icon("mdi:snake", nil)
+					Restart
+				</button>
+			} else {
+				<div class="max-w-lg">
+					<div class="grid grid-cols-3 grid-rows-2 gap-4">
+						<button
+							class="btn btn-primary col-start-2 row-start-1 "
+							data-on-click="$$post('/inputs/up')"
+						>
+							@icon("mdi:chevron-up", nil)
+						</button>
+						<button
+							class="btn btn-primary col-start-1 row-start-2"
+							data-on-click="$$post('/inputs/left')"
+						>
+							@icon("mdi:chevron-left", nil)
+						</button>
+						<button
+							class="btn btn-primary col-start-2 row-start-2"
+							data-on-click="$$post('/inputs/down')"
+						>
+							@icon("mdi:chevron-down", nil)
+						</button>
+						<button
+							class="btn btn-primary col-start-3 row-start-2"
+							data-on-click="$$post('/inputs/right')"
+						>
+							@icon("mdi:chevron-right", nil)
+						</button>
+					</div>
+				</div>
+			}
+			@SnakeArenaSVG(sa, foodSize)
+		</div>
+	}
+}
+
+templ SnakeArenaSVG(g *logic.SnakeGame, foodSize int) {
+	{{ foodSizeStr := fmt.Sprintf("%d", foodSize) }}
+	if g.Mode == logic.ModeNotInitialized {
+		<p>Waiting for game to start...</p>
+	} else {
+		<svg
+			id="snake_arena"
+			class="border border-accent"
+			width="14cm"
+			height="7cm"
+			viewBox={ fmt.Sprintf("0 0 %d %d", g.Width, g.Height) }
+			xmlns="http://www.w3.org/2000/svg"
+		>
+			for _,f  := range g.Food {
+				<rect
+					x={ fmt.Sprintf("%d", f.Position.X) }
+					y={ fmt.Sprintf("%d", f.Position.Y) }
+					width={ foodSizeStr }
+					height={ foodSizeStr }
+					fill="green"
+				></rect>
+			}
+			<polyline style="fill:none;stroke:red;stroke-width:3" points={ position2points(g.Snake) }></polyline>
+			<circle
+				style="fill:red;stroke:red;stroke-width:3"
+				cx={ fmt.Sprintf("%d", g.Snake[0].X) }
+				cy={ fmt.Sprintf("%d", g.Snake[0].Y) }
+				r={ fmt.Sprintf("%d", foodSize/2) }
+			></circle>
+		</svg>
+	}
+}
