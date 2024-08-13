@@ -2,6 +2,7 @@ package web
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -28,9 +29,17 @@ func RunHTTPServer(ctx context.Context, sharedGame *logic.SnakeGame) error {
 
 	r.Get("/updates", func(w http.ResponseWriter, r *http.Request) {
 		sse := datastar.NewSSE(w, r)
+		noVT := datastar.WithoutViewTransitions()
 		updateID := sharedGame.AddUpdateFunc(func(game *logic.SnakeGame) error {
-			c := SnakeArenaSVG(game, foodSize)
-			return datastar.RenderFragmentTempl(sse, c, datastar.WithoutViewTransitions())
+
+			if err := errors.Join(
+				datastar.RenderFragmentTempl(sse, SnakeArenaSVG(game, foodSize), noVT),
+				datastar.RenderFragmentTempl(sse, SnakeButtons(sharedGame), noVT),
+			); err != nil {
+				return fmt.Errorf("rendering fragments: %w", err)
+			}
+
+			return nil
 		})
 		defer sharedGame.RemoveUpdateFunc(updateID)
 		<-r.Context().Done()

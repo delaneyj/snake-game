@@ -26,64 +26,89 @@ templ Page() {
 	</html>
 }
 
-templ PageSnake(sa *logic.SnakeGame, foodSize int) {
+templ PageSnake(g *logic.SnakeGame, foodSize int) {
 	@Page() {
 		<div
 			id="main"
-			class="flex flex-col gap-4 p-8"
+			class="flex flex-col gap-4 p-8 min-h-screen"
 			data-on-load="$$get('/updates')"
+			data-theme="dark"
 		>
 			<div class="font-bold text-xl">Snake game!</div>
-			<a href="https://gitlab.com/go-htmx/go-htmx/-/tree/main/cmd/snake-game?ref_type=heads">Port from an HTMX+Go framework</a>
-			if sa.Mode == logic.ModeNotInitialized {
-				<button
-					class="btn btn-primary btn-lg"
-					data-on-click="$$post('/reset')"
-				>
-					@icon("mdi:snake", nil)
-					Start
-				</button>
-			} else if sa.Mode == logic.ModeFinished {
-				<button
-					class="btn btn-primary btn-lg"
-					data-on-click="$$post('/reset')"
-				>
-					@icon("mdi:snake", nil)
-					Restart
-				</button>
-			} else {
-				<div class="max-w-lg">
-					<div class="grid grid-cols-3 grid-rows-2 gap-4">
-						<button
-							class="btn btn-primary col-start-2 row-start-1 "
-							data-on-click="$$post('/inputs/up')"
-						>
-							@icon("mdi:chevron-up", nil)
-						</button>
-						<button
-							class="btn btn-primary col-start-1 row-start-2"
-							data-on-click="$$post('/inputs/left')"
-						>
-							@icon("mdi:chevron-left", nil)
-						</button>
-						<button
-							class="btn btn-primary col-start-2 row-start-2"
-							data-on-click="$$post('/inputs/down')"
-						>
-							@icon("mdi:chevron-down", nil)
-						</button>
-						<button
-							class="btn btn-primary col-start-3 row-start-2"
-							data-on-click="$$post('/inputs/right')"
-						>
-							@icon("mdi:chevron-right", nil)
-						</button>
-					</div>
-				</div>
-			}
-			@SnakeArenaSVG(sa, foodSize)
+			<a
+				class="link-primary"
+				href="https://gitlab.com/go-htmx/go-htmx/-/tree/main/cmd/snake-game?ref_type=heads"
+			>
+				Port from an HTMX+Go framework
+			</a>
+			<div class="alert alert-info">
+				@icon("mdi:food-apple", nil)
+				Can use buttons or WASD keys to control the snake
+			</div>
+			@SnakeButtons(g)
+			@SnakeArenaSVG(g, foodSize)
 		</div>
 	}
+}
+
+templ SnakeButtons(g *logic.SnakeGame) {
+	<div id="snake_buttons">
+		if g.Mode == logic.ModeNotInitialized {
+			<button
+				class="btn btn-primary btn-lg"
+				data-on-click="$$post('/reset')"
+			>
+				@icon("mdi:snake", nil)
+				Start
+			</button>
+		} else if g.Mode == logic.ModeFinished {
+			<button
+				class="btn btn-primary btn-lg"
+				data-on-click="$$post('/reset')"
+			>
+				@icon("mdi:snake", nil)
+				Restart
+			</button>
+		} else {
+			{{ lgIcon := templ.Attributes{"class": "text-4xl"} }}
+			<div class="max-w-lg">
+				<div class="grid grid-cols-3 grid-rows-2 gap-4">
+					<button
+						class={ "btn btn-ghost col-start-2 row-start-1 ",
+							templ.KV("btn-disabled", g.SnakeDirection == logic.DirectionUp) }
+						data-on-keydown.window.key_w="$$post('/inputs/up')"
+						data-on-click="$$post('/inputs/up')"
+					>
+						@icon("mdi:chevron-up", lgIcon)
+					</button>
+					<button
+						class={ "btn btn-ghost col-start-1 row-start-2",
+							templ.KV("btn-disabled", g.SnakeDirection == logic.DirectionLeft) }
+						data-on-keydown.window.key_a="$$post('/inputs/left')"
+						data-on-click="$$post('/inputs/left')"
+					>
+						@icon("mdi:chevron-left", lgIcon)
+					</button>
+					<button
+						class={ "btn btn-ghost col-start-2 row-start-2",
+						 templ.KV("btn-disabled", g.SnakeDirection == logic.DirectionDown) }
+						data-on-keydown.window.key_s="$$post('/inputs/down')"
+						data-on-click="$$post('/inputs/down')"
+					>
+						@icon("mdi:chevron-down", lgIcon)
+					</button>
+					<button
+						class={ "btn btn-ghost col-start-3 row-start-2",
+							templ.KV("btn-disabled", g.SnakeDirection == logic.DirectionRight) }
+						data-on-keydown.window.key_d="$$post('/inputs/right')"
+						data-on-click="$$post('/inputs/right')"
+					>
+						@icon("mdi:chevron-right", lgIcon)
+					</button>
+				</div>
+			</div>
+		}
+	</div>
 }
 
 templ SnakeArenaSVG(g *logic.SnakeGame, foodSize int) {

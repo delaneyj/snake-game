@@ -3,12 +3,11 @@ package logic
 import (
 	"context"
 	"fmt"
+	"log"
 	"math/rand"
 	"sync"
 	"time"
 )
-
-const FoodSize = 10
 
 type UpdateFunc func(game *SnakeGame) error
 
@@ -16,9 +15,10 @@ type SnakeGame struct {
 	mu             sync.RWMutex
 	Height, Width  int
 	Food           []GameFood
+	FoodSize       int
 	Snake          []GamePosition // First is the head of the snake
 	snakeLength    int
-	snakeDirection Direction
+	SnakeDirection Direction
 	lastTurn       time.Time // Timestamp of setting snake[1]
 	Mode           Mode
 	onUpdates      map[int]UpdateFunc
@@ -45,14 +45,14 @@ func (eng *SnakeGame) RemoveUpdateFunc(id int) {
 func (eng *SnakeGame) SetSnakeDirection(direction Direction) {
 	// Check, if change is required
 	eng.mu.RLock()
-	isNewDirection := eng.snakeDirection != direction
+	isNewDirection := eng.SnakeDirection != direction
 	eng.mu.RUnlock()
 	if !isNewDirection {
 		return
 	}
 
 	eng.mu.Lock()
-	eng.snakeDirection = direction
+	eng.SnakeDirection = direction
 	eng.Snake = append([]GamePosition{{X: eng.Snake[0].X, Y: eng.Snake[0].Y}}, eng.Snake...)
 	eng.lastTurn = time.Now()
 	eng.mu.Unlock()
@@ -67,12 +67,13 @@ func (eng *SnakeGame) GetRandomPosition() GamePosition {
 
 func (eng *SnakeGame) Restart(width, height, foodCount int) {
 	eng.mu.Lock()
+	eng.FoodSize = 10
 	eng.Mode = ModeNew
 	eng.Width = width
 	eng.Height = height
 	snakePosition := eng.GetRandomPosition()
 	eng.Snake = []GamePosition{snakePosition, snakePosition} // Start and end are the same
-	eng.snakeDirection = getRandomDirection()
+	eng.SnakeDirection = getRandomDirection()
 	eng.snakeLength = 40 // Start length of snake
 	eng.Food = make([]GameFood, foodCount)
 	for index := range eng.Food {
@@ -107,17 +108,19 @@ func (eng *SnakeGame) getRealSnakeLength() int {
 	return realLength
 }
 
-const FPS = 120
-const sleepInterval = time.Second / FPS
-const snakeSpeed float64 = 20.0 / (1.0 * float64(time.Second))
+const FPS = 500
+const targetSleepDuration = time.Second / FPS
+const snakeSpeed float64 = 40 / float64(time.Second)
 
 // Run this in a separate thread using "go engine.Run()"
 func (eng *SnakeGame) Run(ctx context.Context) error {
 
+	nextUpdateTime := time.Now()
+
 	for {
 		// Wait for the game to start
 		for eng.Mode != ModeNew {
-			time.Sleep(sleepInterval)
+			time.Sleep(targetSleepDuration)
 		}
 
 		// Start the game
@@ -128,14 +131,19 @@ func (eng *SnakeGame) Run(ctx context.Context) error {
 
 		// Run the game
 		for eng.Mode == ModeRunning {
-			time.Sleep(sleepInterval)
+			now := time.Now()
+			if now.Before(nextUpdateTime) {
+				time.Sleep(nextUpdateTime.Sub(now))
+			}
+			nextUpdateTime = nextUpdateTime.Add(targetSleepDuration)
+
 			eng.mu.Lock()
 
 			// Move snake head
 			durSinceTurn := time.Since(eng.lastTurn)
 			distanceSinceTurnFloat := float64(durSinceTurn) * snakeSpeed
 			distanceSinceTurn := int(distanceSinceTurnFloat)
-			switch eng.snakeDirection {
+			switch eng.SnakeDirection {
 			case DirectionDown:
 				eng.Snake[0].Y = eng.Snake[1].Y + distanceSinceTurn
 			case DirectionUp:
@@ -161,8 +169,9 @@ func (eng *SnakeGame) Run(ctx context.Context) error {
 			}
 
 			// Detect if food was hit
+			fs := float64(eng.FoodSize)
 			for foodindex, food := range eng.Food {
-				if food.Position.getDistance(eng.Snake[0]) < FoodSize {
+				if food.Position.getDistance(eng.Snake[0]) < fs {
 					fmt.Println("Food found!!")
 					eng.Food[foodindex].Position = eng.GetRandomPosition()
 					eng.snakeLength = eng.snakeLength * 3 / 2
@@ -172,7 +181,7 @@ func (eng *SnakeGame) Run(ctx context.Context) error {
 			// Insert extra point in case the snake has no turns, so that lastTurn time has a well defined location
 			if len(eng.Snake) == 2 {
 				eng.Snake = []GamePosition{eng.Snake[0], eng.Snake[0], eng.Snake[1]}
-				eng.lastTurn = time.Now()
+				eng.lastTurn = now
 			}
 
 			// Move snake end
@@ -213,16 +222,19 @@ func (eng *SnakeGame) Run(ctx context.Context) error {
 				wg.Add(onUpdateCount)
 
 				errs := make([]error, 0, onUpdateCount)
-				for _, onUpdate := range eng.onUpdates {
+				for updateID, onUpdate := range eng.onUpdates {
 					go func(onUpdate UpdateFunc) {
 						defer wg.Done()
 						if err := onUpdate(eng); err != nil {
+							eng.RemoveUpdateFunc(updateID)
 							errs = append(errs, err)
 						}
 					}(onUpdate)
 				}
 				wg.Wait()
 			}
+
+			log.Printf("Snake target fps: %d, real fps: %f", FPS, 1.0/float64(time.Since(now).Seconds()))
 		}
 	}
 }
