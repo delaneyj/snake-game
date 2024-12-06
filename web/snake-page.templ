@@ -15,7 +15,7 @@ templ Page() {
 		<head>
 			<title>SNAKE</title>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-			<script type="module" defer src="https://cdn.jsdelivr.net/npm/@sudodevnull/datastar"></script>
+			<script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@develop/bundles/datastar.js"></script>
 			<script src="https://code.iconify.design/iconify-icon/2.1.0/iconify-icon.min.js"></script>
 			<link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css"/>
 			<script src="https://cdn.tailwindcss.com"></script>
@@ -31,7 +31,7 @@ templ PageSnake(g *logic.SnakeGame, foodSize int) {
 		<div
 			id="main"
 			class="flex flex-col gap-4 p-8 min-h-screen"
-			data-on-load="$$get('/updates')"
+			data-on-load="sse('/updates')"
 			data-theme="dark"
 		>
 			<div class="font-bold text-xl">Snake game!</div>
@@ -43,7 +43,7 @@ templ PageSnake(g *logic.SnakeGame, foodSize int) {
 			</a>
 			<div class="alert alert-info">
 				@icon("mdi:food-apple", nil)
-				Can use buttons or WASD keys to control the snake
+				Can use buttons or WASD or Arrow keys to control the snake
 			</div>
 			@SnakeButtons(g)
 			@SnakeArenaSVG(g, foodSize)
@@ -56,7 +56,7 @@ templ SnakeButtons(g *logic.SnakeGame) {
 		if g.Mode == logic.ModeNotInitialized {
 			<button
 				class="btn btn-primary btn-lg"
-				data-on-click="$$post('/reset')"
+				data-on-click="sse('/reset', {method: 'POST'})"
 			>
 				@icon("mdi:snake", nil)
 				Start
@@ -64,7 +64,7 @@ templ SnakeButtons(g *logic.SnakeGame) {
 		} else if g.Mode == logic.ModeFinished {
 			<button
 				class="btn btn-primary btn-lg"
-				data-on-click="$$post('/reset')"
+				data-on-click="sse('/reset', {method: 'POST'})"
 			>
 				@icon("mdi:snake", nil)
 				Restart
@@ -76,32 +76,32 @@ templ SnakeButtons(g *logic.SnakeGame) {
 					<button
 						class={ "btn btn-ghost col-start-2 row-start-1 ",
 							templ.KV("btn-disabled", g.SnakeDirection == logic.DirectionUp) }
-						data-on-keydown.window.key_w="$$post('/inputs/up')"
-						data-on-click="$$post('/inputs/up')"
+						data-on-keydown:window:key_w:key_arrow_up="sse('/inputs/up',{method: 'POST'})"
+						data-on-click="sse('/inputs/up',{method: 'POST'})"
 					>
 						@icon("mdi:chevron-up", lgIcon)
 					</button>
 					<button
 						class={ "btn btn-ghost col-start-1 row-start-2",
 							templ.KV("btn-disabled", g.SnakeDirection == logic.DirectionLeft) }
-						data-on-keydown.window.key_a="$$post('/inputs/left')"
-						data-on-click="$$post('/inputs/left')"
+						data-on-keydown:window:key_a:key_arrow_left="sse('/inputs/left',{method: 'POST'})"
+						data-on-click="sse('/inputs/left',{method: 'POST'})"
 					>
 						@icon("mdi:chevron-left", lgIcon)
 					</button>
 					<button
 						class={ "btn btn-ghost col-start-2 row-start-2",
 						 templ.KV("btn-disabled", g.SnakeDirection == logic.DirectionDown) }
-						data-on-keydown.window.key_s="$$post('/inputs/down')"
-						data-on-click="$$post('/inputs/down')"
+						data-on-keydown:window:key_s:key_arrow_down="sse('/inputs/down',{method: 'POST'})"
+						data-on-click="sse('/inputs/down',{method: 'POST'})"
 					>
 						@icon("mdi:chevron-down", lgIcon)
 					</button>
 					<button
 						class={ "btn btn-ghost col-start-3 row-start-2",
 							templ.KV("btn-disabled", g.SnakeDirection == logic.DirectionRight) }
-						data-on-keydown.window.key_d="$$post('/inputs/right')"
-						data-on-click="$$post('/inputs/right')"
+						data-on-keydown:window:key_d:key_arrow_right="sse('/inputs/right',{method: 'POST'})"
+						data-on-click="sse('/inputs/right',{method: 'POST'})"
 					>
 						@icon("mdi:chevron-right", lgIcon)
 					</button>

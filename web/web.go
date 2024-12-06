@@ -4,20 +4,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 
-	"github.com/delaneyj/datastar"
 	"github.com/delaneyj/snake/logic"
 	"github.com/go-chi/chi"
+	datastar "github.com/starfederation/datastar/sdk/go"
 )
+
+const port = 8080
 
 func RunHTTPServer(ctx context.Context, sharedGame *logic.SnakeGame) error {
 
 	r := chi.NewRouter()
 
 	srv := &http.Server{
-		Addr:    ":8080",
+		Addr:    fmt.Sprintf(":%d", port),
 		Handler: r,
 	}
 
@@ -29,12 +32,10 @@ func RunHTTPServer(ctx context.Context, sharedGame *logic.SnakeGame) error {
 
 	r.Get("/updates", func(w http.ResponseWriter, r *http.Request) {
 		sse := datastar.NewSSE(w, r)
-		noVT := datastar.WithoutViewTransitions()
 		updateID := sharedGame.AddUpdateFunc(func(game *logic.SnakeGame) error {
-
 			if err := errors.Join(
-				datastar.RenderFragmentTempl(sse, SnakeArenaSVG(game, foodSize), noVT),
-				datastar.RenderFragmentTempl(sse, SnakeButtons(sharedGame), noVT),
+				sse.MergeFragmentTempl(SnakeArenaSVG(game, foodSize)),
+				sse.MergeFragmentTempl(SnakeButtons(sharedGame)),
 			); err != nil {
 				return fmt.Errorf("rendering fragments: %w", err)
 			}
@@ -74,6 +75,7 @@ func RunHTTPServer(ctx context.Context, sharedGame *logic.SnakeGame) error {
 		srv.Shutdown(ctx)
 	}()
 
+	log.Printf("Listening on http://localhost:%d", port)
 	return srv.ListenAndServe()
 }
 

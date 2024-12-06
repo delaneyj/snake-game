@@ -17,6 +17,7 @@ func main() {
 }
 
 func run(ctx context.Context) error {
+	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	sharedGame := &logic.SnakeGame{}
 	sharedGame.Restart(600, 300, 10)
 

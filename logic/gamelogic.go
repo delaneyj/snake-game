@@ -3,7 +3,6 @@ package logic
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand"
 	"sync"
 	"time"
@@ -108,7 +107,7 @@ func (eng *SnakeGame) getRealSnakeLength() int {
 	return realLength
 }
 
-const FPS = 500
+const FPS = 60
 const targetSleepDuration = time.Second / FPS
 const snakeSpeed float64 = 40 / float64(time.Second)
 
@@ -234,7 +233,7 @@ func (eng *SnakeGame) Run(ctx context.Context) error {
 				wg.Wait()
 			}
 
-			log.Printf("Snake target fps: %d, real fps: %f", FPS, 1.0/float64(time.Since(now).Seconds()))
+			// log.Printf("Snake target fps: %d, real fps: %f", FPS, 1.0/float64(time.Since(now).Seconds()))
 		}
 	}
 }
